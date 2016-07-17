@@ -6,6 +6,9 @@ import scala.collection.mutable.ListBuffer
 // TODO:
 //  implement all search algorithms
 //  write tests
+//  fix names to be "minheuristicvalue" in hillclimbing
+//  clean up the data structures we use so that the "child" case class isn't necessary
+//  update the "getChildren" method to return the nodes and not just the node IDs
 
 class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
 
@@ -32,20 +35,75 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
   def hillClimbingSearch(): Unit = {
     val startVisited = List(stateSpaceGraph.getStartNode)
     val startMaxHeuristic = startVisited.head.heuristic
-    def hillClimbingRecursiveSearch(visited: List[SearchState[Int]],
+    def hillClimbingSearchRecursive(visited: List[SearchState[Int]],
                                     maxHeuristicValue: Int): List[SearchState[Int]] = {
       val nextNode = visited.head.children
         .find(stateSpaceGraph.getHeuristic(_) <= maxHeuristicValue)
       if (nextNode.isDefined) {
         val newVisited = stateSpaceGraph.getNode(nextNode.get) :: visited
         val newHeuristic = stateSpaceGraph.getHeuristic(nextNode.get)
-        hillClimbingRecursiveSearch(newVisited, newHeuristic)
+        hillClimbingSearchRecursive(newVisited, newHeuristic)
       }
       else {
         visited
       }
     }
-    val searchResults = hillClimbingRecursiveSearch(startVisited, startMaxHeuristic)
+    val searchResults = hillClimbingSearchRecursive(startVisited, startMaxHeuristic)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
+  case class child(nodeId: Int, heuristic: Int)
+
+  def steepestAscentHillClimbingSearch(): Unit = {
+    val startVisited = List(stateSpaceGraph.getStartNode)
+    val startMaxHeuristic = startVisited.head.heuristic
+    def hillClimbingSearchRecursive(visited: List[SearchState[Int]],
+                                    maxHeuristicValue: Int): List[SearchState[Int]] = {
+      val nextNode = visited.head.children
+        .map { r =>
+          child(r, stateSpaceGraph.getHeuristic(r))
+        }
+        .minBy(_.heuristic)
+      if (nextNode.heuristic <= maxHeuristicValue) {
+        val newVisited = stateSpaceGraph.getNode(nextNode.nodeId) :: visited
+        val newHeuristic = stateSpaceGraph.getHeuristic(nextNode.nodeId)
+        hillClimbingSearchRecursive(newVisited, newHeuristic)
+      }
+      else {
+        visited
+      }
+    }
+    val searchResults = hillClimbingSearchRecursive(startVisited, startMaxHeuristic)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
+  def beamSearch(beamWidth: Int = 2): Unit = {
+    // currently gets stuck in cycles and returns nothing
+    val startVisited = List[SearchState[Int]]()
+    val startOpen = List(stateSpaceGraph.getStartNode)
+
+    def beamSearchRecursive(visited: List[SearchState[Int]],
+                            open: List[SearchState[Int]]): List[SearchState[Int]] = {
+      if (open.exists(_.goal equals true)) {
+        open ++ visited
+      }
+      else {
+        // get the children of each node in the open list
+        val children = open.flatMap {
+          _.children.map(stateSpaceGraph.getNode(_))
+        }
+        // create a new open list
+        val newOpen = children
+          .sortBy(_.heuristic)
+          .take(beamWidth)
+        // create a new visited list
+        val newVisited = open ++ visited
+        beamSearchRecursive(newVisited, newOpen)
+      }
+    }
+    val searchResults = beamSearchRecursive(startVisited, startOpen)
       .map(_.data)
     indicesToPrintedSolution(searchResults)
   }
