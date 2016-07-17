@@ -257,6 +257,102 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
     indicesToPrintedSolution(searchResults)
   }
 
+
+
+  def branchAndBoundWithHeuristicsSearch(): Unit = {
+    // note that at each iteration, this re-opens children that it has visited and
+    // takes a very long time even for simple search spaces
+    val startQueue = List(queueNode(stateSpaceGraph.getStartNode, 0))
+    val startVisited = List[SearchState[Int]]()
+    var optimalPathLengthToGoal = 10000 // set very large
+
+    def branchAndBoundWithDPSearchRecursive(queue: List[queueNode],
+                                            visited: List[SearchState[Int]]): List[SearchState[Int]] = {
+      val currentNode = queue.head
+      // check if that node is the goal
+      if (currentNode.node.goal equals true) {
+        println(currentNode.pathLength)
+        currentNode.node :: visited
+      }
+      else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
+        val goalNode = queue.filter(_.node.goal equals true).head.node
+        goalNode :: visited
+      }
+      else {
+        // for each child, add them to the queue with an increasing path length
+        val currentChildren = currentNode.node.children
+          .map {
+            child =>
+              queueNode(stateSpaceGraph.getNode(child), currentNode.pathLength + 1)
+          }.toList
+        // check the pathlength to the goal node
+        if (queue.map(_.node.goal).contains(true)) {
+          optimalPathLengthToGoal = queue.filter(_.node.goal equals true).head.pathLength
+        }
+        // add the open node to the list of visited nodes
+        val newVisited = currentNode.node :: visited
+        // remove the open node from the queue and sort by pathlength
+        val newQueue = (currentChildren ++ queue)
+          .diff(List(currentNode))
+          // ADDED HEURISTIC BELOW vvv
+          .sortBy(node => node.pathLength + node.node.heuristic)
+        branchAndBoundWithDPSearchRecursive(newQueue, newVisited)
+      }
+    }
+    val searchResults = branchAndBoundWithDPSearchRecursive(startQueue, startVisited)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
+  def aStarSearch(): Unit = {
+    // note that at each iteration, this re-opens children that it has visited and
+    // takes a very long time even for simple search spaces
+    val startQueue = List(queueNode(stateSpaceGraph.getStartNode, 0))
+    val startVisited = List[SearchState[Int]]()
+    var optimalPathLengthToGoal = 10000 // set very large
+
+    def branchAndBoundWithDPSearchRecursive(queue: List[queueNode],
+                                            visited: List[SearchState[Int]]): List[SearchState[Int]] = {
+      val currentNode = queue.head
+      // check if that node is the goal
+      if (currentNode.node.goal equals true) {
+        println(currentNode.pathLength)
+        currentNode.node :: visited
+      }
+      else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
+        val goalNode = queue.filter(_.node.goal equals true).head.node
+        goalNode :: visited
+      }
+      else {
+        // for each child, add them to the queue with an increasing path length
+        val currentChildren = currentNode.node.children
+          .map {
+            child =>
+              queueNode(stateSpaceGraph.getNode(child), currentNode.pathLength + 1)
+          }.toList
+          // this is the key difference: we remove nodes we've seen
+          .filterNot(kid => visited.contains(kid.node))
+        // check the pathlength to the goal node
+        if (queue.map(_.node.goal).contains(true)) {
+          optimalPathLengthToGoal = queue.filter(_.node.goal equals true).head.pathLength
+        }
+        // add the open node to the list of visited nodes
+        val newVisited = currentNode.node :: visited
+        // remove the open node from the queue and sort by pathlength
+        val newQueue = (currentChildren ++ queue)
+          .diff(List(currentNode))
+          // ADDED HEURISTIC BELOW vvv
+          .sortBy(node => node.pathLength + node.node.heuristic)
+        branchAndBoundWithDPSearchRecursive(newQueue, newVisited)
+      }
+    }
+    val searchResults = branchAndBoundWithDPSearchRecursive(startQueue, startVisited)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
+
+
   private def indicesToPrintedSolution(solution: List[Int]): Unit = {
     solutionMazeArray = collection.mutable.Map(mazeArray.mapValues(v => v.stringData).toSeq: _*)
     solution foreach (solutionMazeArray.update(_, "*"))
