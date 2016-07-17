@@ -81,6 +81,7 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
 
   def beamSearch(beamWidth: Int = 2): Unit = {
     // currently gets stuck in cycles and returns nothing
+    // note that this measure can't backtrack to nodes on the open list
     val startVisited = List[SearchState[Int]]()
     val startOpen = List(stateSpaceGraph.getStartNode)
 
@@ -104,6 +105,31 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
       }
     }
     val searchResults = beamSearchRecursive(startVisited, startOpen)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
+  def bestFirstSearch(beamWidth: Int = 2): Unit = {
+    // currently gets stuck in cycles and returns nothing
+    val startVisited = List[SearchState[Int]]()
+    val startOpen = List(stateSpaceGraph.getStartNode)
+
+    def bestFirstSearchRecursive(visited: List[SearchState[Int]],
+                                 open: List[SearchState[Int]]): List[SearchState[Int]] = {
+      if (open.exists(_.goal equals true)) {
+        open ++ visited
+      }
+      else {
+        val currentNode = open.head
+        val newChildren = currentNode.children.map(stateSpaceGraph.getNode(_))
+        // create a new open list
+        val newOpen = (open.filter(_ != currentNode) ++ newChildren).sortBy(_.heuristic)
+        // create a new visited list
+        val newVisited = currentNode :: visited
+        bestFirstSearchRecursive(newVisited, newOpen)
+      }
+    }
+    val searchResults = bestFirstSearchRecursive(startVisited, startOpen)
       .map(_.data)
     indicesToPrintedSolution(searchResults)
   }
