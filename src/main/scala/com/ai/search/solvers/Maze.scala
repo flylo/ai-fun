@@ -4,10 +4,7 @@ import com.ai.search.datastructures.{StateSpaceGraph, SearchState}
 import scala.collection.mutable.ListBuffer
 
 // TODO:
-//  make manhattan distance method
 //  implement all search algorithms
-//  fix printing
-//  fix off-by-one error (wherever the fuck it is)
 //  write tests
 
 class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
@@ -30,6 +27,29 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
       .map(_.data)
     indicesToPrintedSolution(searchResults)
   }
+
+
+  def hillClimbingSearch(): Unit = {
+    val startVisited = List(stateSpaceGraph.getStartNode)
+    val startMaxHeuristic = startVisited.head.heuristic
+    def hillClimbingRecursiveSearch(visited: List[SearchState[Int]],
+                                    maxHeuristicValue: Int): List[SearchState[Int]] = {
+      val nextNode = visited.head.children
+        .find(stateSpaceGraph.getHeuristic(_) <= maxHeuristicValue)
+      if (nextNode.isDefined) {
+        val newVisited = stateSpaceGraph.getNode(nextNode.get) :: visited
+        val newHeuristic = stateSpaceGraph.getHeuristic(nextNode.get)
+        hillClimbingRecursiveSearch(newVisited, newHeuristic)
+      }
+      else {
+        visited
+      }
+    }
+    val searchResults = hillClimbingRecursiveSearch(startVisited, startMaxHeuristic)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
 
   private def indicesToPrintedSolution(solution: List[Int]): Unit = {
     solutionMazeArray = collection.mutable.Map(mazeArray.mapValues(v => v.stringData).toSeq: _*)
