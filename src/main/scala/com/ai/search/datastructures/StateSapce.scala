@@ -43,4 +43,7 @@ class StateSpaceGraph[T] {
     val gottenNode = nodes.getOrElse(goal.head, new SearchState[T](goal.head))
     gottenNode
   }
+  def getHeuristic(value: T): Int = {
+    getNode(value).heuristic
+  }
 }

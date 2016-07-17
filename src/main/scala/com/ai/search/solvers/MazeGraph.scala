@@ -138,7 +138,6 @@ class MazeGraph(val mazeFile: String) {
     */
   def setManhattanDistanceHeuristic(): Unit = {
     val goalCoordinates = mazeArray.get(stateSpaceGraph.getGoalNode.data).get.coordinates
-    println(goalCoordinates)
     stateSpaceGraph.nodes.keySet
       .foreach {
         k =>
