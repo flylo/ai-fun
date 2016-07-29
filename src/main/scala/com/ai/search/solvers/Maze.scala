@@ -3,13 +3,6 @@ package com.ai.search.solvers
 import com.ai.search.datastructures.{StateSpaceGraph, SearchState}
 import scala.collection.mutable.ListBuffer
 
-// TODO:
-//  implement all search algorithms
-//  write tests
-//  fix names to be "minheuristicvalue" in hillclimbing
-//  clean up the data structures we use so that the "child" case class isn't necessary
-//  update the "getChildren" method to return the nodes and not just the node IDs
-
 class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
 
   def depthFirstSearchWithBacktracking(): Unit = {
@@ -138,33 +131,6 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
     indicesToPrintedSolution(searchResults)
   }
 
-  case class openNode(state: SearchState[Int],
-                      //                      parent: SearchState[Int],
-                      distanceTraveled: Int)
-
-  //  def getFringe(openList: Map[SearchState[Int], Int]): List[openNode] = {
-  //    openList
-  //      .flatMap {
-  //        case (k, v) =>
-  //          k.children.map {
-  //            child =>
-  //              openNode(stateSpaceGraph.getNode(child), k, v + 1)
-  //          }
-  //      }
-  //      .toList
-  //  }
-//  def getFringe(openList: Map[SearchState[Int], Int]): List[openNode] = {
-//    openList
-//      .flatMap {
-//        case (k, v) =>
-//          k.children.map {
-//            child =>
-//              openNode(stateSpaceGraph.getNode(child), v + 1)
-//          }
-//      }
-//      .toList
-//  }
-
   case class queueNode(node: SearchState[Int], pathLength: Int)
 
   def branchAndBoundSearch(): Unit = {
@@ -179,7 +145,6 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
       val currentNode = queue.head
       // check if that node is the goal
       if (currentNode.node.goal equals true) {
-        println(currentNode.pathLength)
         currentNode.node :: visited
       }
       else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
@@ -219,11 +184,10 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
     var optimalPathLengthToGoal = 10000 // set very large
 
     def branchAndBoundWithDPSearchRecursive(queue: List[queueNode],
-                                      visited: List[SearchState[Int]]): List[SearchState[Int]] = {
+                                            visited: List[SearchState[Int]]): List[SearchState[Int]] = {
       val currentNode = queue.head
       // check if that node is the goal
       if (currentNode.node.goal equals true) {
-        println(currentNode.pathLength)
         currentNode.node :: visited
       }
       else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
@@ -258,7 +222,6 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
   }
 
 
-
   def branchAndBoundWithHeuristicsSearch(): Unit = {
     // note that at each iteration, this re-opens children that it has visited and
     // takes a very long time even for simple search spaces
@@ -271,7 +234,6 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
       val currentNode = queue.head
       // check if that node is the goal
       if (currentNode.node.goal equals true) {
-        println(currentNode.pathLength)
         currentNode.node :: visited
       }
       else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
@@ -316,7 +278,6 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
       val currentNode = queue.head
       // check if that node is the goal
       if (currentNode.node.goal equals true) {
-        println(currentNode.pathLength)
         currentNode.node :: visited
       }
       else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
@@ -352,7 +313,6 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
   }
 
 
-
   private def indicesToPrintedSolution(solution: List[Int]): Unit = {
     solutionMazeArray = collection.mutable.Map(mazeArray.mapValues(v => v.stringData).toSeq: _*)
     solution foreach (solutionMazeArray.update(_, "*"))
@@ -375,7 +335,57 @@ object Maze {
   def main(args: Array[String]): Unit = {
 
     val maze = new Maze(args(0))
-    maze.depthFirstSearchWithBacktracking()
+
+    println("\n\n\nPlease Enter Desired Search Method:\n")
+    val userInput = scala.io.StdIn.readLine()
+
+    if (userInput == "dfs") {
+      println("\n\nDepth-First Search with Backtracking:\n")
+      maze.depthFirstSearchWithBacktracking()
+    }
+
+    if (userInput == "hill-climbing") {
+      println("\n\nHill-Climbing Search:\n")
+      maze.hillClimbingSearch()
+    }
+
+    if (userInput == "steepest-ascent") {
+      println("\n\nSteepest-Ascent Hill-Climbing Search:\n")
+      maze.steepestAscentHillClimbingSearch()
+    }
+
+    if (userInput == "beam") {
+      println("\n\nBeam Search:\n")
+      maze.beamSearch()
+    }
+
+    if (userInput == "best-first") {
+      println("\n\nBest-First Search:\n")
+      maze.bestFirstSearch()
+    }
+
+    if (userInput == "b&b") {
+      println("\n\nBranch And Bound Search:\n")
+      maze.branchAndBoundSearch()
+    }
+
+    if (userInput == "b&b-dp") {
+      println("\n\nBranch And Bound With Dynamic Programming:\n")
+      maze.branchAndBoundWithDPSearch()
+    }
+
+    if (userInput == "b&b-heuristics") {
+      println("\n\nBranch And Bound With Heuristics:\n")
+      maze.branchAndBoundWithHeuristicsSearch()
+    }
+
+    if (userInput == "a*") {
+      println("\n\nA-Star Search:\n")
+      maze.aStarSearch()
+    }
+
+    println("\n\nFinished.")
 
   }
+
 }
