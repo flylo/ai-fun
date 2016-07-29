@@ -82,6 +82,9 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
   def beamSearch(beamWidth: Int = 2): Unit = {
     // currently gets stuck in cycles and returns nothing
     // note that this measure can't backtrack to nodes on the open list
+    // nor does it filter nodes out of the closed list, it solely maintains
+    // the separate lists so that it can remember the paths taken in
+    // a memory-efficient manner
     val startVisited = List[SearchState[Int]]()
     val startOpen = List(stateSpaceGraph.getStartNode)
 
@@ -110,7 +113,7 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
   }
 
   def bestFirstSearch(beamWidth: Int = 2): Unit = {
-    // currently gets stuck in cycles and returns nothing
+    // implemented to avoid nodes that are on the closed list
     val startVisited = List[SearchState[Int]]()
     val startOpen = List(stateSpaceGraph.getStartNode)
 
@@ -120,7 +123,8 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
         open ++ visited
       }
       else {
-        val currentNode = open.head
+        // the filterNot function removes any nodes that we've already visited and allows search to converge
+        val currentNode = open.filterNot(visited.contains(_)).head
         val newChildren = currentNode.children.map(stateSpaceGraph.getNode(_))
         // create a new open list
         val newOpen = (open.filter(_ != currentNode) ++ newChildren).sortBy(_.heuristic)
@@ -133,6 +137,220 @@ class Maze(override val mazeFile: String) extends MazeGraph(mazeFile) {
       .map(_.data)
     indicesToPrintedSolution(searchResults)
   }
+
+  case class openNode(state: SearchState[Int],
+                      //                      parent: SearchState[Int],
+                      distanceTraveled: Int)
+
+  //  def getFringe(openList: Map[SearchState[Int], Int]): List[openNode] = {
+  //    openList
+  //      .flatMap {
+  //        case (k, v) =>
+  //          k.children.map {
+  //            child =>
+  //              openNode(stateSpaceGraph.getNode(child), k, v + 1)
+  //          }
+  //      }
+  //      .toList
+  //  }
+//  def getFringe(openList: Map[SearchState[Int], Int]): List[openNode] = {
+//    openList
+//      .flatMap {
+//        case (k, v) =>
+//          k.children.map {
+//            child =>
+//              openNode(stateSpaceGraph.getNode(child), v + 1)
+//          }
+//      }
+//      .toList
+//  }
+
+  case class queueNode(node: SearchState[Int], pathLength: Int)
+
+  def branchAndBoundSearch(): Unit = {
+    // note that at each iteration, this re-opens children that it has visited and
+    // takes a very long time even for simple search spaces
+    val startQueue = List(queueNode(stateSpaceGraph.getStartNode, 0))
+    val startVisited = List[SearchState[Int]]()
+    var optimalPathLengthToGoal = 10000 // set very large
+
+    def branchAndBoundSearchRecursive(queue: List[queueNode],
+                                      visited: List[SearchState[Int]]): List[SearchState[Int]] = {
+      val currentNode = queue.head
+      // check if that node is the goal
+      if (currentNode.node.goal equals true) {
+        println(currentNode.pathLength)
+        currentNode.node :: visited
+      }
+      else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
+        val goalNode = queue.filter(_.node.goal equals true).head.node
+        goalNode :: visited
+      }
+      else {
+        // for each child, add them to the queue with an increasing path length
+        val currentChildren = currentNode.node.children
+          .map {
+            child =>
+              queueNode(stateSpaceGraph.getNode(child), currentNode.pathLength + 1)
+          }.toList
+        // check the pathlength to the goal node
+        if (queue.map(_.node.goal).contains(true)) {
+          optimalPathLengthToGoal = queue.filter(_.node.goal equals true).head.pathLength
+        }
+        // add the open node to the list of visited nodes
+        val newVisited = currentNode.node :: visited
+        // remove the open node from the queue and sort by pathlength
+        val newQueue = (currentChildren ++ queue)
+          .diff(List(currentNode))
+          .sortBy(_.pathLength)
+        branchAndBoundSearchRecursive(newQueue, newVisited)
+      }
+    }
+    val searchResults = branchAndBoundSearchRecursive(startQueue, startVisited)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
+  def branchAndBoundWithDPSearch(): Unit = {
+    // note that at each iteration, this re-opens children that it has visited and
+    // takes a very long time even for simple search spaces
+    val startQueue = List(queueNode(stateSpaceGraph.getStartNode, 0))
+    val startVisited = List[SearchState[Int]]()
+    var optimalPathLengthToGoal = 10000 // set very large
+
+    def branchAndBoundWithDPSearchRecursive(queue: List[queueNode],
+                                      visited: List[SearchState[Int]]): List[SearchState[Int]] = {
+      val currentNode = queue.head
+      // check if that node is the goal
+      if (currentNode.node.goal equals true) {
+        println(currentNode.pathLength)
+        currentNode.node :: visited
+      }
+      else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
+        val goalNode = queue.filter(_.node.goal equals true).head.node
+        goalNode :: visited
+      }
+      else {
+        // for each child, add them to the queue with an increasing path length
+        val currentChildren = currentNode.node.children
+          .map {
+            child =>
+              queueNode(stateSpaceGraph.getNode(child), currentNode.pathLength + 1)
+          }.toList
+          // this is the key difference: we remove nodes we've seen
+          .filterNot(kid => visited.contains(kid.node))
+        // check the pathlength to the goal node
+        if (queue.map(_.node.goal).contains(true)) {
+          optimalPathLengthToGoal = queue.filter(_.node.goal equals true).head.pathLength
+        }
+        // add the open node to the list of visited nodes
+        val newVisited = currentNode.node :: visited
+        // remove the open node from the queue and sort by pathlength
+        val newQueue = (currentChildren ++ queue)
+          .diff(List(currentNode))
+          .sortBy(_.pathLength)
+        branchAndBoundWithDPSearchRecursive(newQueue, newVisited)
+      }
+    }
+    val searchResults = branchAndBoundWithDPSearchRecursive(startQueue, startVisited)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
+
+
+  def branchAndBoundWithHeuristicsSearch(): Unit = {
+    // note that at each iteration, this re-opens children that it has visited and
+    // takes a very long time even for simple search spaces
+    val startQueue = List(queueNode(stateSpaceGraph.getStartNode, 0))
+    val startVisited = List[SearchState[Int]]()
+    var optimalPathLengthToGoal = 10000 // set very large
+
+    def branchAndBoundWithDPSearchRecursive(queue: List[queueNode],
+                                            visited: List[SearchState[Int]]): List[SearchState[Int]] = {
+      val currentNode = queue.head
+      // check if that node is the goal
+      if (currentNode.node.goal equals true) {
+        println(currentNode.pathLength)
+        currentNode.node :: visited
+      }
+      else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
+        val goalNode = queue.filter(_.node.goal equals true).head.node
+        goalNode :: visited
+      }
+      else {
+        // for each child, add them to the queue with an increasing path length
+        val currentChildren = currentNode.node.children
+          .map {
+            child =>
+              queueNode(stateSpaceGraph.getNode(child), currentNode.pathLength + 1)
+          }.toList
+        // check the pathlength to the goal node
+        if (queue.map(_.node.goal).contains(true)) {
+          optimalPathLengthToGoal = queue.filter(_.node.goal equals true).head.pathLength
+        }
+        // add the open node to the list of visited nodes
+        val newVisited = currentNode.node :: visited
+        // remove the open node from the queue and sort by pathlength
+        val newQueue = (currentChildren ++ queue)
+          .diff(List(currentNode))
+          // ADDED HEURISTIC BELOW vvv
+          .sortBy(node => node.pathLength + node.node.heuristic)
+        branchAndBoundWithDPSearchRecursive(newQueue, newVisited)
+      }
+    }
+    val searchResults = branchAndBoundWithDPSearchRecursive(startQueue, startVisited)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
+  def aStarSearch(): Unit = {
+    // note that at each iteration, this re-opens children that it has visited and
+    // takes a very long time even for simple search spaces
+    val startQueue = List(queueNode(stateSpaceGraph.getStartNode, 0))
+    val startVisited = List[SearchState[Int]]()
+    var optimalPathLengthToGoal = 10000 // set very large
+
+    def branchAndBoundWithDPSearchRecursive(queue: List[queueNode],
+                                            visited: List[SearchState[Int]]): List[SearchState[Int]] = {
+      val currentNode = queue.head
+      // check if that node is the goal
+      if (currentNode.node.goal equals true) {
+        println(currentNode.pathLength)
+        currentNode.node :: visited
+      }
+      else if (queue.minBy(_.pathLength).pathLength > optimalPathLengthToGoal) {
+        val goalNode = queue.filter(_.node.goal equals true).head.node
+        goalNode :: visited
+      }
+      else {
+        // for each child, add them to the queue with an increasing path length
+        val currentChildren = currentNode.node.children
+          .map {
+            child =>
+              queueNode(stateSpaceGraph.getNode(child), currentNode.pathLength + 1)
+          }.toList
+          // this is the key difference: we remove nodes we've seen
+          .filterNot(kid => visited.contains(kid.node))
+        // check the pathlength to the goal node
+        if (queue.map(_.node.goal).contains(true)) {
+          optimalPathLengthToGoal = queue.filter(_.node.goal equals true).head.pathLength
+        }
+        // add the open node to the list of visited nodes
+        val newVisited = currentNode.node :: visited
+        // remove the open node from the queue and sort by pathlength
+        val newQueue = (currentChildren ++ queue)
+          .diff(List(currentNode))
+          // ADDED HEURISTIC BELOW vvv
+          .sortBy(node => node.pathLength + node.node.heuristic)
+        branchAndBoundWithDPSearchRecursive(newQueue, newVisited)
+      }
+    }
+    val searchResults = branchAndBoundWithDPSearchRecursive(startQueue, startVisited)
+      .map(_.data)
+    indicesToPrintedSolution(searchResults)
+  }
+
 
 
   private def indicesToPrintedSolution(solution: List[Int]): Unit = {
