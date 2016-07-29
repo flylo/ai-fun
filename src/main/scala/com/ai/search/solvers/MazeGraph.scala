@@ -37,7 +37,9 @@ class MazeGraph(val mazeFile: String) {
   }
 
   case class coordinate(row: Int, col: Int)
+
   case class NodeData(id: Int, stringData: String, coordinates: coordinate)
+
   /**
     * Method to convert a 2d array of maze entries into a 1d array of key value pairs
     */
@@ -89,7 +91,7 @@ class MazeGraph(val mazeFile: String) {
     }
     outList.flatMap {
       neighbor =>
-        val mazeEntry = mazeArray.getOrElse(neighbor, new NodeData(-1, "+", coordinate(-1,-1)))
+        val mazeEntry = mazeArray.getOrElse(neighbor, new NodeData(-1, "+", coordinate(-1, -1)))
         if (mazeEntry.stringData == "+") None
         else Some(neighbor)
     }

@@ -12,6 +12,7 @@ class SearchState[T](obj: T) {
   def addChild(child: T): Unit = {
     children += child
   }
+
   def setHeuristic(value: Int): Unit = {
     heuristic = value
   }
@@ -31,19 +32,24 @@ class StateSpaceGraph[T] {
       goal += newNode.data
     }
   }
+
   def getNode(obj: T): SearchState[T] = {
     val gottenNode = nodes.getOrElse(obj, new SearchState[T](obj))
     gottenNode
   }
+
   def getStartNode: SearchState[T] = {
     val gottenNode = nodes.getOrElse(start.head, new SearchState[T](start.head))
     gottenNode
   }
+
   def getGoalNode: SearchState[T] = {
     val gottenNode = nodes.getOrElse(goal.head, new SearchState[T](goal.head))
     gottenNode
   }
+
   def getHeuristic(value: T): Int = {
     getNode(value).heuristic
   }
+
 }
